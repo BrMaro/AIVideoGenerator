@@ -83,21 +83,6 @@ def create_folder(folder_name):
         print(f"Folder '{folder_name}' already exists. Skipping creation.")
 
 
-def get_image_prompts_from_script(driver,script):
-    prompt_text = f"Generate {IMAGE_NUMBER} image scene prompts making sure to encapsulate the environment and the theme for the following script:{script}"
-    driver.execute_script("window.open('');")
-    driver.switch_to.window(driver.window_handles[1])
-    driver.get("https://chat.openai.com/")
-    driver.implicitly_wait(10)
-    input_form = driver.find_element(By.ID,"prompt-textarea")
-    input_form.send_keys(prompt_text)
-    input_form.send_keys(Keys.RETURN)
-    response = driver.find_elements(By.XPATH,"//div[@class='w-full text-token-text-primary']")
-    time.sleep(10)
-    driver.switch_to.window((driver.window_handles[0]))
-    return (response[-1].text)
-
-
 def generate_image_prompts(script):
     with open('API_KEY.txt',"r") as key:
         API_KEY = key.read()
@@ -108,8 +93,19 @@ def generate_image_prompts(script):
     )
     return response
 
-print(generate_image_prompts(script))
 
+def clean_api_response(response):
+    # Extract text content using regular expressions
+    pattern = re.compile(r'\d+\.\s(.*?)\n', re.DOTALL)
+    matches = re.findall(pattern, response)
+
+    # Create an array to store the individual texts
+    texts_array = []
+
+    for match in matches:
+        texts_array.append(match.strip())
+
+    return texts_array
 
 
 def pass_image_prompts_to_ai(driver,promptsArr):
@@ -143,25 +139,12 @@ def pass_image_prompts_to_ai(driver,promptsArr):
 # pass_image_prompts_to_ai(["Scene 2:Setting: Wedding Ceremony Grounds Characters:Thor (Freya disguise): Trying to maintain composure.Thrym: Smirking, thinking he has outsmarted the Asgardians.Odin: Watching from his throne with a mix of amusement and concern.Loki: Sneaking around in the background, planning mischief.Description: The ceremony is about to begin, with Thor and Thrym facing each other. Odin observes from his throne, and Loki lurks in the shadows, ready to cause chaos."])
 
 
-
 def main():
     driver = initialize_selenium()
     try:
         driver.implicitly_wait(10)
-        # driver.find_element(By.XPATH, "(//button[text()='Architecture'])[3]").click()
 
         create_folder(FOLDER_PATH)
 
-        image_div = driver.find_element(By.XPATH, "//div[@class='css-mveqkt']")
 
-        images = image_div.find_elements(By.TAG_NAME, "img")
 
-        image_dictionary = {}
-        # Key(IMAGE PATH),Value:(PROMPT)
-        for img in images[:IMAGE_NUMBER]:
-            src = img.get_attribute("src")
-            prompt = img.get_attribute("alt")
-            image_dictionary[src] = prompt
-            download_image(src, f"{FOLDER_PATH}\\{prompt[:40]}.{FILE_TYPE}")
-    except Exception as e:
-        print(e)
