@@ -27,6 +27,12 @@ timeoutTime = 60
 wait = WebDriverWait(driver,timeoutTime)
 
 
+def set_aspect_ratio():
+    select_element = driver.find_element(By.XPATH,"//select[@id='field-:r7a:']")
+    select = Select(select_element)
+    select.select_by_value("7")
+
+
 def download_image(imgUrl, filepath):
     try:
         response = requests.get(imgUrl, stream=True)
@@ -82,9 +88,6 @@ def pass_image_prompts_to_ai(promptsArr):
     driver.find_element(By.XPATH,"//textarea[@class='chakra-textarea css-jj5ykg']").click() # i
     driver.find_element(By.XPATH,f"(//div[@class='css-lrke8r'])[{IMAGE_PER_PROMPT}]").click()
 
-    # select_element = driver.find_element(By.XPATH,"//select[@id='field-:r7a:']")
-    # select = Select(select_element)
-    # select.select_by_value("7")
 
     for prompt in promptsArr:
 
@@ -95,7 +98,7 @@ def pass_image_prompts_to_ai(promptsArr):
         user_input.send_keys(prompt)
         driver.find_element(By.XPATH,"//button[@class='chakra-button css-102okvd']").click() # Start generation
 
-        image_locator = (By.XPATH, f'//img[@alt={prompt}]')
+        image_locator = (By.XPATH, f'//img[@alt="{prompt}"]')
         image = wait.until(EC.presence_of_element_located(image_locator))
 
         img_src = image.get_attribute("src")
