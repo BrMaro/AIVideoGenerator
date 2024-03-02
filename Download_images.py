@@ -12,13 +12,7 @@ import time
 import re
 import cohere
 
-options = Options()
-options.add_experimental_option("detach", True)
-options.add_argument("user-data-dir=C:\\Users\\Techron\\AppData\\Local\\Google\\Chrome\\User Data")
-driver = webdriver.Chrome(options=options)
-url = "https://app.leonardo.ai/"
-driver.get(url)
-driver.implicitly_wait(20)
+
 
 script="The time THOR cosplayed and GOT MARRIED?!!Remember when THOR cosplayed.Yeah, you had that right,THOR’s Mjolnir was stolen by the Thrym, wonder how they carried, anywho, the giants offered to return the hammer in exchange for Freya’s hand in marriage, So of course the logical thing to do was to dress up as Freya and get married and it worked During the party, Thor grabbed Mjolnir and slaughtered all the giants and ogres there. From that day on, pretty sure all the giants………"
 IMAGE_NUMBER = 20
@@ -26,10 +20,18 @@ IMAGE_PER_PROMPT = 1
 FOLDER_PATH = "C:\\Users\\Techron\\PycharmProjects\\AI Video Generator\\Images"
 FILE_TYPE = ".jpg"
 timeoutTime = 60
-wait = WebDriverWait(driver,timeoutTime)
 
 
-def set_aspect_ratio():
+
+def initialize_selenium():
+    options = Options()
+    options.add_experimental_option("detach", True)
+    options.add_argument("user-data-dir=C:\\Users\\Techron\\AppData\\Local\\Google\\Chrome\\User Data")
+    driver = webdriver.Chrome(options=options)
+    return driver
+
+
+def set_aspect_ratio(driver):
     select_element = driver.find_element(By.XPATH,"//select[@id='field-:r7a:']")
     select = Select(select_element)
     select.select_by_value("7")
@@ -81,7 +83,7 @@ def create_folder(folder_name):
         print(f"Folder '{folder_name}' already exists. Skipping creation.")
 
 
-def get_image_prompts_from_script(script):
+def get_image_prompts_from_script(driver,script):
     prompt_text = f"Generate {IMAGE_NUMBER} image scene prompts making sure to encapsulate the environment and the theme for the following script:{script}"
     driver.execute_script("window.open('');")
     driver.switch_to.window(driver.window_handles[1])
@@ -110,7 +112,11 @@ print(generate_image_prompts(script))
 
 
 
-def pass_image_prompts_to_ai(promptsArr):
+def pass_image_prompts_to_ai(driver,promptsArr):
+    url = "https://app.leonardo.ai/"
+    driver.get(url)
+    driver.implicitly_wait(20)
+
     driver.find_element(By.XPATH,"//p[text()='Image Generation']").click() # image generation tab
     driver.find_element(By.XPATH,"//textarea[@class='chakra-textarea css-jj5ykg']").click() # i
     driver.find_element(By.XPATH,f"(//div[@class='css-lrke8r'])[{IMAGE_PER_PROMPT}]").click()
@@ -126,7 +132,7 @@ def pass_image_prompts_to_ai(promptsArr):
         driver.find_element(By.XPATH,"//button[@class='chakra-button css-102okvd']").click() # Start generation
 
         image_locator = (By.XPATH, f'//img[@alt="{prompt}"]')
-        image = wait.until(EC.presence_of_element_located(image_locator))
+        image = WebDriverWait(driver, timeoutTime).until(EC.presence_of_element_located(image_locator))
 
         img_src = image.get_attribute("src")
         prompt = image.get_attribute("alt")
@@ -139,6 +145,7 @@ def pass_image_prompts_to_ai(promptsArr):
 
 
 def main():
+    driver = initialize_selenium()
     try:
         driver.implicitly_wait(10)
         # driver.find_element(By.XPATH, "(//button[text()='Architecture'])[3]").click()
