@@ -10,6 +10,7 @@ import requests
 from tqdm import tqdm
 import time
 import re
+import cohere
 
 options = Options()
 options.add_experimental_option("detach", True)
@@ -94,7 +95,19 @@ def get_image_prompts_from_script(script):
     driver.switch_to.window((driver.window_handles[0]))
     return (response[-1].text)
 
-# print(get_image_prompts_from_script(script))
+
+def generate_image_prompts(script):
+    with open('API_KEY.txt',"r") as key:
+        API_KEY = key.read()
+    co = cohere.Client(API_KEY)
+
+    response = co.generate(
+        prompt= f"create {IMAGE_NUMBER} vivid descriptive image scenes from:{script}"
+    )
+    return response
+
+print(generate_image_prompts(script))
+
 
 
 def pass_image_prompts_to_ai(promptsArr):
@@ -119,7 +132,9 @@ def pass_image_prompts_to_ai(promptsArr):
         prompt = image.get_attribute("alt")
         download_image(img_src, f"{FOLDER_PATH}\\{clean_filename(prompt[:80])}.{FILE_TYPE}")
 
-pass_image_prompts_to_ai(["Scene 2:Setting: Wedding Ceremony Grounds Characters:Thor (Freya disguise): Trying to maintain composure.Thrym: Smirking, thinking he has outsmarted the Asgardians.Odin: Watching from his throne with a mix of amusement and concern.Loki: Sneaking around in the background, planning mischief.Description: The ceremony is about to begin, with Thor and Thrym facing each other. Odin observes from his throne, and Loki lurks in the shadows, ready to cause chaos."])
+    driver.quit()
+
+# pass_image_prompts_to_ai(["Scene 2:Setting: Wedding Ceremony Grounds Characters:Thor (Freya disguise): Trying to maintain composure.Thrym: Smirking, thinking he has outsmarted the Asgardians.Odin: Watching from his throne with a mix of amusement and concern.Loki: Sneaking around in the background, planning mischief.Description: The ceremony is about to begin, with Thor and Thrym facing each other. Odin observes from his throne, and Loki lurks in the shadows, ready to cause chaos."])
 
 
 
