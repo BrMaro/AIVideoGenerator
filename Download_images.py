@@ -9,6 +9,7 @@ from selenium.webdriver.support import expected_conditions as EC
 import requests
 from tqdm import tqdm
 import time
+import re
 
 options = Options()
 options.add_experimental_option("detach", True)
@@ -31,6 +32,19 @@ def set_aspect_ratio():
     select_element = driver.find_element(By.XPATH,"//select[@id='field-:r7a:']")
     select = Select(select_element)
     select.select_by_value("7")
+
+
+def clean_filename(filename):
+    pattern = r'[\\/:"*?<>|]|\.{2,}|[<>]|\s+$|^\.|[ ]+$'
+
+    cleaned_filename = re.sub(pattern, '_', filename)
+
+    cleaned_filename = cleaned_filename.strip()
+
+    if not cleaned_filename:
+        cleaned_filename = 'unnamed_file'
+
+    return cleaned_filename
 
 
 def download_image(imgUrl, filepath):
@@ -103,9 +117,9 @@ def pass_image_prompts_to_ai(promptsArr):
 
         img_src = image.get_attribute("src")
         prompt = image.get_attribute("alt")
-        download_image(img_src, f"{FOLDER_PATH}\\{prompt[:80]}.{FILE_TYPE}")
+        download_image(img_src, f"{FOLDER_PATH}\\{clean_filename(prompt[:80])}.{FILE_TYPE}")
 
-pass_image_prompts_to_ai(["Setting: Asgardian Throne Room Characters:Thor: Dressed in an elaborate bridal gown, wearing a golden wig, and a silver tiara. Looking uncomfortable yet determined.Thrym: A giant with a sinister grin, holding Mjolnir triumphantly.Asgardian Guards: Positioned on the sides, unaware of Thor's disguise.Description: Thor, disguised as Freya, stands at the center of the grand Asgardian Throne Room. Thrym, the giant, stands beside Thor, confident in his victory.","Scene 2:Setting: Wedding Ceremony Grounds Characters:Thor (Freya disguise): Trying to maintain composure.Thrym: Smirking, thinking he has outsmarted the Asgardians.Odin: Watching from his throne with a mix of amusement and concern.Loki: Sneaking around in the background, planning mischief.Description: The ceremony is about to begin, with Thor and Thrym facing each other. Odin observes from his throne, and Loki lurks in the shadows, ready to cause chaos."])
+pass_image_prompts_to_ai(["Scene 2:Setting: Wedding Ceremony Grounds Characters:Thor (Freya disguise): Trying to maintain composure.Thrym: Smirking, thinking he has outsmarted the Asgardians.Odin: Watching from his throne with a mix of amusement and concern.Loki: Sneaking around in the background, planning mischief.Description: The ceremony is about to begin, with Thor and Thrym facing each other. Odin observes from his throne, and Loki lurks in the shadows, ready to cause chaos."])
 
 
 
