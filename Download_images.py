@@ -3,6 +3,9 @@ from selenium.webdriver.common.by import By
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import Select
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import requests
 from tqdm import tqdm
 import time
@@ -13,13 +16,16 @@ options.add_argument("user-data-dir=C:\\Users\\Techron\\AppData\\Local\\Google\\
 driver = webdriver.Chrome(options=options)
 url = "https://app.leonardo.ai/"
 driver.get(url)
-driver.implicitly_wait(10)
+driver.implicitly_wait(20)
 
 script="The time THOR cosplayed and GOT MARRIED?!!Remember when THOR cosplayed.Yeah, you had that right,THOR’s Mjolnir was stolen by the Thrym, wonder how they carried, anywho, the giants offered to return the hammer in exchange for Freya’s hand in marriage, So of course the logical thing to do was to dress up as Freya and get married and it worked During the party, Thor grabbed Mjolnir and slaughtered all the giants and ogres there. From that day on, pretty sure all the giants………"
 IMAGE_NUMBER = 20
 IMAGE_PER_PROMPT = 1
 FOLDER_PATH = "C:\\Users\\Techron\\PycharmProjects\\AI Video Generator\\Images"
 FILE_TYPE = ".jpg"
+timeoutTime = 60
+wait = WebDriverWait(driver,timeoutTime)
+
 
 def download_image(imgUrl, filepath):
     try:
@@ -44,6 +50,7 @@ def download_image(imgUrl, filepath):
                     bar.update(len(chunk))
     except requests.exceptions.RequestException as e:
         print(f"Error: {e}")
+
 
 def create_folder(folder_name):
     if not os.path.exists(folder_name):
@@ -75,19 +82,27 @@ def pass_image_prompts_to_ai(promptsArr):
     driver.find_element(By.XPATH,"//textarea[@class='chakra-textarea css-jj5ykg']").click() # i
     driver.find_element(By.XPATH,f"(//div[@class='css-lrke8r'])[{IMAGE_PER_PROMPT}]").click()
 
+    # select_element = driver.find_element(By.XPATH,"//select[@id='field-:r7a:']")
+    # select = Select(select_element)
+    # select.select_by_value("7")
+
     for prompt in promptsArr:
+
         user_input = driver.find_element(By.XPATH, "//textarea[@class='chakra-textarea css-jj5ykg']")
         user_input.click()
+        user_input.send_keys(Keys.CONTROL + 'a')
+        user_input.send_keys(Keys.DELETE)
         user_input.send_keys(prompt)
-        driver.find_element(By.XPATH,"//button[@class='chakra-button css-102okvd']")
-        image_panel = driver.find_element(By.XPATH,"//div[@class='css-1eiwtsh']")
-        images = image_panel.find_elements(By.TAG_NAME,"img")
-        img_src = images[0].get_attribute("src")
-        prompt = images[0].get_attribute("alt")
-        time.sleep(10)
-        download_image(img_src, f"{FOLDER_PATH}\\{prompt[:40]}.{FILE_TYPE}")
+        driver.find_element(By.XPATH,"//button[@class='chakra-button css-102okvd']").click() # Start generation
 
-pass_image_prompts_to_ai(["Amidst the vibrant, celestial realm of Asgard, a colossal banquet hall sprawls beneath a kaleidoscope sky of swirling cosmic hues. Glistening pillars of iridescent crystal hold aloft the celestial ceiling, casting a resplendent glow over the gathering. The air is filled with the enchanting melodies of unseen celestial beings, harmonizing in celestial tunes.","At the center of the opulent hall stands a radiant throne, adorned with luminous gemstones and intricate runes. A majestic feast table stretches across the expanse, laden with ambrosial delights and exotic fruits from realms unknown. Guests, a mix of gods and ethereal beings, mingle in jubilant celebration, their radiant garments flowing like liquid rainbows."])
+        image_locator = (By.XPATH, f'//img[@alt={prompt}]')
+        image = wait.until(EC.presence_of_element_located(image_locator))
+
+        img_src = image.get_attribute("src")
+        prompt = image.get_attribute("alt")
+        download_image(img_src, f"{FOLDER_PATH}\\{prompt[:80]}.{FILE_TYPE}")
+
+pass_image_prompts_to_ai(["Setting: Asgardian Throne Room Characters:Thor: Dressed in an elaborate bridal gown, wearing a golden wig, and a silver tiara. Looking uncomfortable yet determined.Thrym: A giant with a sinister grin, holding Mjolnir triumphantly.Asgardian Guards: Positioned on the sides, unaware of Thor's disguise.Description: Thor, disguised as Freya, stands at the center of the grand Asgardian Throne Room. Thrym, the giant, stands beside Thor, confident in his victory.","Scene 2:Setting: Wedding Ceremony Grounds Characters:Thor (Freya disguise): Trying to maintain composure.Thrym: Smirking, thinking he has outsmarted the Asgardians.Odin: Watching from his throne with a mix of amusement and concern.Loki: Sneaking around in the background, planning mischief.Description: The ceremony is about to begin, with Thor and Thrym facing each other. Odin observes from his throne, and Loki lurks in the shadows, ready to cause chaos."])
 
 
 
