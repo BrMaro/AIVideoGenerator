@@ -83,7 +83,7 @@ def create_folder(folder_name):
         print(f"Folder '{folder_name}' already exists. Skipping creation.")
 
 
-def generate_image_prompts(script):
+def generate_image_prompts_from_script(script):
     with open('API_KEY.txt',"r") as key:
         API_KEY = key.read()
     co = cohere.Client(API_KEY)
@@ -95,16 +95,17 @@ def generate_image_prompts(script):
 
 
 def clean_api_response(response):
-    # Extract text content using regular expressions
-    pattern = re.compile(r'\d+\.\s(.*?)\n', re.DOTALL)
-    matches = re.findall(pattern, response)
+    response = str(response)
+    matches = re.findall(r'\s+(\d+\.\s.*?)\n', response, re.DOTALL)
 
     # Create an array to store the individual texts
     texts_array = []
 
+    # Iterate through matches and append to the array
     for match in matches:
         texts_array.append(match.strip())
 
+    # Print or use the array as needed
     return texts_array
 
 
@@ -136,15 +137,22 @@ def pass_image_prompts_to_ai(driver,promptsArr):
 
     driver.quit()
 
-# pass_image_prompts_to_ai(["Scene 2:Setting: Wedding Ceremony Grounds Characters:Thor (Freya disguise): Trying to maintain composure.Thrym: Smirking, thinking he has outsmarted the Asgardians.Odin: Watching from his throne with a mix of amusement and concern.Loki: Sneaking around in the background, planning mischief.Description: The ceremony is about to begin, with Thor and Thrym facing each other. Odin observes from his throne, and Loki lurks in the shadows, ready to cause chaos."])
-
 
 def main():
     driver = initialize_selenium()
-    try:
-        driver.implicitly_wait(10)
 
-        create_folder(FOLDER_PATH)
+    driver.implicitly_wait(10)
+
+    create_folder(FOLDER_PATH)
+
+    response = generate_image_prompts_from_script(script)
+
+    arr = clean_api_response(response)
+
+    pass_image_prompts_to_ai(driver,arr)
 
 
 
+
+
+main()
