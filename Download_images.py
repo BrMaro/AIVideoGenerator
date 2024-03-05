@@ -14,13 +14,17 @@ import cohere
 
 
 
-script="The time THOR cosplayed and GOT MARRIED?!!Remember when THOR cosplayed.Yeah, you had that right,THOR’s Mjolnir was stolen by the Thrym, wonder how they carried, anywho, the giants offered to return the hammer in exchange for Freya’s hand in marriage, So of course the logical thing to do was to dress up as Freya and get married and it worked During the party, Thor grabbed Mjolnir and slaughtered all the giants and ogres there. From that day on, pretty sure all the giants………"
 IMAGE_NUMBER = 20
 IMAGE_PER_PROMPT = 1
 FOLDER_PATH = "C:\\Users\\Techron\\PycharmProjects\\AI Video Generator\\Images"
 FILE_TYPE = ".jpg"
 timeoutTime = 60
 
+
+def get_script():
+    with open('script.txt','r') as file:
+        content = file.read()
+        return content
 
 
 def initialize_selenium():
@@ -139,6 +143,8 @@ def pass_image_prompts_to_ai(driver,promptsArr):
 
 
 def main():
+    script = get_script()
+
     driver = initialize_selenium()
 
     driver.implicitly_wait(10)
@@ -147,8 +153,9 @@ def main():
 
     response = generate_image_prompts_from_script(script)
 
-    arr = clean_api_response(response)
 
+    arr = clean_api_response(response)
+    print(arr)
     pass_image_prompts_to_ai(driver,arr)
 
 
