@@ -7,6 +7,9 @@ from tqdm import tqdm
 import numpy as np
 from PIL import Image
 from gtts import gTTS
+import re
+
+
 
 IMAGE_FOLDER_PATH = "C:\\Users\\Techron\\PycharmProjects\\AI Video Generator\\Images"
 FILE_TYPE = ".jpg"
@@ -17,12 +20,47 @@ DURATION_PER_IMAGE = 2
 language = 'en'
 
 
+
 def get_script():
     with open('script.txt','r') as file:
         content = file.read()
         return content
 
 
+def generate_subttile_file(script,max_characters_per_line=20):
+    words = re.findall(r'\b\w+\b', script)
+    subtitle_lines = []
+
+    current_line = []
+    current_line_length = 0
+
+    # for word in words:
+    #     if current_line_length + len(word) > max_characters_per_line:
+    #         subtitle_lines.append(' '.join(current_line))
+    #         current_line += word
+    #         current_line_length = len(word)
+    #     else:
+    #         current_line
+    #         current_line_length += len(word)
+
+    for word in words:
+        if current_line_length + len(word) > max_characters_per_line:
+            subtitle_lines.append(' '.join(current_line))
+            current_line = [word]
+            current_line_length = len(word)
+        else:
+            current_line.append(word)
+            current_line_length += len(word)
+
+    # Add the last line
+    subtitle_lines.append(' '.join(current_line))
+
+    # Generate the subtitle file content
+    subtitle_content = '\n'.join(f'{i*2:.2f} {(i+1)*2:.2f} {line}' for i, line in enumerate(subtitle_lines))
+
+    return subtitle_content
+
+print(generate_subttile_file(get_script()))
 
 def get_image_files(folder):
     image_files = [f for f in os.listdir(folder) if f.lower().endswith(FILE_TYPE)]
@@ -99,4 +137,4 @@ def create_video(image_folder, output_path, fps=24):
     final_clip = final_clip.set_audio(audio_clip)
     final_clip.write_videofile(output_path, fps=fps, codec='libx264', audio_codec='aac', audio=True)
 
-create_video(IMAGE_FOLDER_PATH, 'output_video.mp4', fps=30)
+# create_video(IMAGE_FOLDER_PATH, 'output_video.mp4', fps=30)
