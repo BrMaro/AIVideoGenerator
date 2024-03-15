@@ -60,7 +60,7 @@ def download_image(imgUrl, filepath):
         response.raise_for_status()
 
         total_size = int(response.headers.get('content-length', 0))
-        block_size = 8192  # Adjust as needed
+        block_size = 8192
 
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
