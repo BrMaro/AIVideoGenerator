@@ -68,17 +68,19 @@ def load_subtitles(subtitle_file):
     return subtitles
 
 
-def create_text_clips(subtitle_file):
+def create_text_clips(subtitle_file,video_duration):
 
     subtitles = load_subtitles(subtitle_file)
     text_clips = []
     for start,end,caption in subtitles:
-        text_clip = TextClip(caption, fontsize=24, color='white',bg_color='black',size=(1920, 1080), method='caption', align='center')
+        text_clip = TextClip(caption, fontsize=24, color='white',bg_color='black',size=(WIDTH, HEIGHT), method='caption', align='center')
         text_clip = text_clip.set_start(start).set_duration(end-start)
         text_clips.append(text_clip)
 
-    print("Subtitle clips created")
-    return text_clips
+    final_text_clip = CompositeVideoClip(text_clips).set_duration(video_duration)
+
+    print("Subtitle clip created")
+    return final_text_clip
 
 
 def get_image_files(folder):
@@ -135,19 +137,8 @@ def create_video(image_folder, output_path, fps=24):
         resized_images.append(resized_image)
 
 
-    text_clips = create_text_clips(SUBTITLE_FILE_PATH)
-
-    add_sound(get_script())
-    audio_clip = AudioFileClip('script.mp3')
-    sound_file_duration = audio_clip.duration
-
-
     clips = []
-    transitions = [
-        lambda c: c.fx(vfx.fadeout, 0.3).fx(vfx.fadein, 0.3),
-        lambda c: c.fx(all.crossfadein, duration=0.5).fx(all.crossfadeout, duration=0.5),
-        lambda c: c.fx(all.spin_in),
-    ]
+
 
     for i in tqdm(range(len(image_files)), desc="Creating Video", unit="clip"):
         img_clip = resized_images[i].set_duration(DURATION_PER_IMAGE).set_position(("center", "center"))
@@ -158,10 +149,21 @@ def create_video(image_folder, output_path, fps=24):
         img_clip = img_clip.fx(vfx.fadeout,0.2).fx(vfx.fadein,0.2)
         clips.append(img_clip)
 
+    #Concatenate Video clips
     final_clip = concatenate_videoclips(clips,method='compose')
 
-    # final_clip = CompositeVideoClip([final_clip,*text_clips])
+    #load subtitle cliops
+    video_duration = final_clip.duration
+    subtitle_clips=create_text_clips(SUBTITLE_FILE_PATH,video_duration)
+
+    # Overlay subtitle clipo above video clip
+    final_clip = CompositeVideoClip([final_clip, subtitle_clips])
+
+    # Add sound to the final clip
+    add_sound(get_script())
+    audio_clip = AudioFileClip('script.mp3')
     final_clip = final_clip.set_audio(audio_clip)
+
     final_clip.write_videofile(output_path, fps=fps, codec='libx264', audio_codec='aac', audio=True)
 
 create_video(IMAGE_FOLDER_PATH, 'output_video.mp4', fps=30)
