@@ -6,7 +6,9 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import SessionNotCreatedException
 import requests
+import psutil
 from tqdm import tqdm
 import time
 import re
@@ -20,14 +22,34 @@ FOLDER_PATH = "C:\\Users\\Techron\\PycharmProjects\\AI Video Generator\\Images"
 FILE_TYPE = ".jpg"
 timeoutTime = 60
 
+def close_previous_sessions():
+    # Iterate over all running processes
+    for proc in psutil.process_iter(['pid', 'name']):
+        # Check if the process name corresponds to a WebDriver process
+        if 'chromedriver' in proc.info['name']:
+            # Retrieve the process ID
+            pid = proc.info['pid']
+            # Skip terminating the System Idle Process (PID 0)
+            if pid != 0:
+                try:
+                    process = psutil.Process(pid)
+                    process.terminate()
+                    print(f"Terminated previous WebDriver process with PID: {pid}")
+                except psutil.NoSuchProcess:
+                    # Handle the case where the process no longer exists
+                    pass
+                except psutil.AccessDenied:
+                    # Handle the case where access is denied to terminate the process
+                    print(f"Access denied to terminate process with PID: {pid}")
 
 def get_script():
-    with open('script.txt','r') as file:
+    with open('script.txt', 'r', encoding='utf-8') as file:
         content = file.read()
         return content
 
 
 def initialize_selenium():
+    close_previous_sessions()
     options = Options()
     options.add_experimental_option("detach", True)
     options.add_argument("user-data-dir=C:\\Users\\Techron\\AppData\\Local\\Google\\Chrome\\User Data")
@@ -88,6 +110,7 @@ def create_folder(folder_name):
 
 
 def generate_image_prompts_from_script(script):
+    print("Accessing Cohere API")
     with open('API_KEY.txt',"r") as key:
         API_KEY = key.read()
     co = cohere.Client(API_KEY)
@@ -110,6 +133,7 @@ def clean_api_response(response):
         texts_array.append(match.strip())
 
     # Print or use the array as needed
+    print("Cleaned API Response")
     return texts_array
 
 
@@ -120,7 +144,7 @@ def pass_image_prompts_to_ai(driver,promptsArr):
 
     driver.find_element(By.XPATH,"//p[text()='Image Generation']").click() # image generation tab
     driver.find_element(By.XPATH,"//textarea[@class='chakra-textarea css-jj5ykg']").click() # i
-    driver.find_element(By.XPATH,f"(//div[@class='css-lrke8r'])[{IMAGE_PER_PROMPT}]").click()
+    # driver.find_element(By.XPATH,f"(//div[@class='css-lrke8r'])[{IMAGE_PER_PROMPT}]").click()
 
 
     for prompt in promptsArr:
@@ -132,7 +156,7 @@ def pass_image_prompts_to_ai(driver,promptsArr):
         user_input.send_keys(prompt)
         driver.find_element(By.XPATH,"//button[@class='chakra-button css-102okvd']").click() # Start generation
 
-        image_locator = (By.XPATH, f'//img[@alt="{prompt}"]')
+        image_locator = (By.XPATH, f"//img[@alt='{prompt}']")
         image = WebDriverWait(driver, timeoutTime).until(EC.presence_of_element_located(image_locator))
 
         img_src = image.get_attribute("src")
@@ -143,23 +167,23 @@ def pass_image_prompts_to_ai(driver,promptsArr):
 
 
 def main():
-    script = get_script()
+    try:
+        script = get_script()
 
-    driver = initialize_selenium()
+        driver = initialize_selenium()
 
-    driver.implicitly_wait(10)
+        driver.implicitly_wait(10)
 
-    create_folder(FOLDER_PATH)
+        create_folder(FOLDER_PATH)
 
-    response = generate_image_prompts_from_script(script)
+        response = generate_image_prompts_from_script(script)
 
+        arr = clean_api_response(response)
+        print(arr)
+        pass_image_prompts_to_ai(driver,arr)
 
-    arr = clean_api_response(response)
-    print(arr)
-    pass_image_prompts_to_ai(driver,arr)
-
-
-
+    except SessionNotCreatedException:
+        pass
 
 
 main()
