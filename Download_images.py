@@ -20,7 +20,7 @@ load_dotenv()
 IMAGE_NUMBER = 20
 IMAGE_PER_PROMPT = 1
 FOLDER_PATH = "C:\\Users\\Techron\\PycharmProjects\\AI Video Generator\\Images"
-FILE_TYPE = ".jpg"
+IMAGE_FILE_TYPE = os.getenv("IMAGE_FILE_TYPE")
 timeoutTime = 60
 
 
@@ -39,7 +39,7 @@ def initialize_selenium():
 
 
 def set_aspect_ratio(driver):
-    select_element = driver.find_element(By.XPATH,"//select[@id='field-:r7a:']")
+    select_element = driver.find_element(By.XPATH, "//select[@id='field-:r7a:']")
     select = Select(select_element)
     select.select_by_value("7")
 
@@ -96,7 +96,7 @@ def generate_image_prompts_from_script(script):
     co = cohere.Client(API_KEY)
 
     response = co.generate(
-        prompt= f"Generate {IMAGE_NUMBER} numbered different vivid and descriptive scenes inspired by the script provided. Ensure each scene captures the essence of the setting and maintains consistency among characters. Emphasize detailed surroundings and character interactions to bring the narrative to life. Aim to depict key moments and emotions portrayed in the script, highlighting dynamic visuals that evoke a strong sense of atmosphere and storytelling. Here is the provided SCRIPT: \n{script}"
+        prompt=f"Generate {IMAGE_NUMBER} numbered different vivid and descriptive visual scenes inspired by the script provided. Ensure each scene captures the essence of the setting,environment and mood. Emphasize detailed surroundings and character interactions to bring the narrative to life. Aim to depict key moments and emotions portrayed in the script, highlighting dynamic visuals that evoke a strong sense of atmosphere and storytelling. Make sure to use consistent naming and also describe clothing where necesary to maintain character consistency. Here is the provided SCRIPT: \n{script}"
     )
     return response
 
@@ -106,45 +106,40 @@ def clean_api_response(response):
     print(response)
     matches = re.findall(r'\s+(\d+\.\s.*?)\n', response, re.DOTALL)
 
-    # Create an array to store the individual texts
     texts_array = []
 
-    # Iterate through matches and append to the array
     for match in matches:
         match = re.sub(r"'", r"", match)
         texts_array.append(match.strip())
         print(match.strip())
 
-    # Print or use the array as needed
     print("Cleaned API Response")
     return texts_array
 
 
-def pass_image_prompts_to_ai(driver,promptsArr):
+def pass_image_prompts_to_ai(driver, promptsArr):
     url = "https://app.leonardo.ai/"
     driver.get(url)
     driver.implicitly_wait(20)
 
-    driver.find_element(By.XPATH,"//p[text()='Image Generation']").click() # image generation tab
-    driver.find_element(By.XPATH,"//textarea[@class='chakra-textarea css-jj5ykg']").click() # i
-    # driver.find_element(By.XPATH,f"(//div[@class='css-lrke8r'])[{IMAGE_PER_PROMPT}]").click()
-
+    #image preferences
+    driver.find_element(By.XPATH, "//p[text()='Image Generation']").click()  # image generation tab
+    driver.find_element(By.XPATH, "//textarea[@class='chakra-textarea css-jj5ykg']").click()  # i
 
     for prompt in promptsArr:
-
         user_input = driver.find_element(By.XPATH, "//textarea[@class='chakra-textarea css-jj5ykg']")
         user_input.click()
         user_input.send_keys(Keys.CONTROL + 'a')
         user_input.send_keys(Keys.DELETE)
         user_input.send_keys(prompt)
-        driver.find_element(By.XPATH,"//button[@class='chakra-button css-102okvd']").click() # Start generation
+        driver.find_element(By.XPATH, "//button[@class='chakra-button css-102okvd']").click()  # Start generation
 
         image_locator = (By.XPATH, f"//img[@alt='{prompt}']")
         image = WebDriverWait(driver, timeoutTime).until(EC.presence_of_element_located(image_locator))
 
         img_src = image.get_attribute("src")
         prompt = image.get_attribute("alt")
-        download_image(img_src, f"{FOLDER_PATH}\\{clean_filename(prompt[:80])}.{FILE_TYPE}")
+        download_image(img_src, f"{FOLDER_PATH}\\{clean_filename(prompt[:80])}.{IMAGE_FILE_TYPE}")
 
     driver.quit()
 
@@ -164,11 +159,10 @@ def main():
 
         arr = clean_api_response(response)
         print(arr)
-        pass_image_prompts_to_ai(driver,arr)
+        pass_image_prompts_to_ai(driver, arr)
 
     except SessionNotCreatedException as e:
         print(f"{e}")
-
 
 
 main()
