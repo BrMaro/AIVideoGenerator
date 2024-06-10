@@ -17,6 +17,8 @@ PROJECT_PATH = "C:\\Users\\Techron\\PycharmProjects\\AI Video Generator"
 IMAGE_FOLDER_PATH = os.path.join(PROJECT_PATH,"Images")
 SUBTITLE_FILE_PATH = os.path.join(PROJECT_PATH,"subtitles.txt")
 
+FONT = 'Arial-Rounded-MT-Bold'
+
 FILE_TYPE = ".jpg"
 HEIGHT = 1080
 ASPECT_RATIO = 9/16
@@ -25,7 +27,7 @@ DURATION_PER_IMAGE = 2
 language = 'en'
 
 def get_script():
-    with open('script.txt','r') as file:
+    with open('script.txt','r', encoding='utf-8') as file:
         content = file.read()
         return content
 
@@ -73,8 +75,8 @@ def create_text_clips(subtitle_file,video_duration):
     subtitles = load_subtitles(subtitle_file)
     text_clips = []
     for start,end,caption in subtitles:
-        text_clip = TextClip(caption, fontsize=24, color='white',bg_color='black',size=(WIDTH, HEIGHT), method='caption', align='center')
-        text_clip = text_clip.set_start(start).set_duration(end-start)
+        text_clip = TextClip(caption, fontsize=60, color='yellow',size=(WIDTH,HEIGHT), method='caption', align='center',font=FONT)
+        text_clip = text_clip.set_start(start).set_duration(end-start).set_opacity(1.0)
         text_clips.append(text_clip)
 
     final_text_clip = CompositeVideoClip(text_clips).set_duration(video_duration)
@@ -124,22 +126,24 @@ def resize_image(img_file):
 
 
 def add_sound(script):
-    mysound = gTTS(text=script,lang=language)
-    mysound.save("script.mp3")
-
+    if not os.path.exists("script.mp3"):
+        mysound = gTTS(text=script, lang=language)
+        mysound.save("script.mp3")
+    else:
+        print("Script file already exists")
 
 def create_video(image_folder, output_path, fps=24):
-    image_files = get_image_files(image_folder)
+    VID_DURATION = 5
+    # AudioFileClip("script.mp3").duration
+    print(f"Expected Video Length: {VID_DURATION}")
 
+    image_files = get_image_files(image_folder)
     resized_images = []
     for image_file in tqdm(image_files, desc="Resizing images", unit="image"):
         resized_image = resize_image(image_file)
         resized_images.append(resized_image)
 
-
     clips = []
-
-
     for i in tqdm(range(len(image_files)), desc="Creating Video", unit="clip"):
         img_clip = resized_images[i].set_duration(DURATION_PER_IMAGE).set_position(("center", "center"))
 
@@ -148,22 +152,31 @@ def create_video(image_folder, output_path, fps=24):
         # # Adding transitions
         img_clip = img_clip.fx(vfx.fadeout,0.2).fx(vfx.fadein,0.2)
         clips.append(img_clip)
-
+    # print("3")
     #Concatenate Video clips
-    final_clip = concatenate_videoclips(clips,method='compose')
+    final_clip = concatenate_videoclips(clips, method='compose')
+    # print("4")
 
-    #load subtitle cliops
-    video_duration = final_clip.duration
-    subtitle_clips=create_text_clips(SUBTITLE_FILE_PATH,video_duration)
+    #load subtitle clips
+    subtitle_clips=create_text_clips(SUBTITLE_FILE_PATH,VID_DURATION)
+    # print("5")
 
-    # Overlay subtitle clipo above video clip
+    # Overlay subtitle clip above video clip
     final_clip = CompositeVideoClip([final_clip, subtitle_clips])
+    # print("6")
 
     # Add sound to the final clip
     add_sound(get_script())
     audio_clip = AudioFileClip('script.mp3')
+    # print("7")
+
     final_clip = final_clip.set_audio(audio_clip)
+    # print("8")
 
     final_clip.write_videofile(output_path, fps=fps, codec='libx264', audio_codec='aac', audio=True)
+    # print("9")
 
 create_video(IMAGE_FOLDER_PATH, 'output_video.mp4', fps=30)
+
+#### BALANCE LENGTH
+#### FIX DOWNLOAD_BUTTON m

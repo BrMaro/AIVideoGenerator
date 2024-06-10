@@ -9,12 +9,13 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import SessionNotCreatedException
 import requests
 import psutil
+from dotenv import load_dotenv
 from tqdm import tqdm
 import time
 import re
 import cohere
 
-
+load_dotenv()
 
 IMAGE_NUMBER = 20
 IMAGE_PER_PROMPT = 1
@@ -22,25 +23,6 @@ FOLDER_PATH = "C:\\Users\\Techron\\PycharmProjects\\AI Video Generator\\Images"
 FILE_TYPE = ".jpg"
 timeoutTime = 60
 
-def close_previous_sessions():
-    # Iterate over all running processes
-    for proc in psutil.process_iter(['pid', 'name']):
-        # Check if the process name corresponds to a WebDriver process
-        if 'chromedriver' in proc.info['name']:
-            # Retrieve the process ID
-            pid = proc.info['pid']
-            # Skip terminating the System Idle Process (PID 0)
-            if pid != 0:
-                try:
-                    process = psutil.Process(pid)
-                    process.terminate()
-                    print(f"Terminated previous WebDriver process with PID: {pid}")
-                except psutil.NoSuchProcess:
-                    # Handle the case where the process no longer exists
-                    pass
-                except psutil.AccessDenied:
-                    # Handle the case where access is denied to terminate the process
-                    print(f"Access denied to terminate process with PID: {pid}")
 
 def get_script():
     with open('script.txt', 'r', encoding='utf-8') as file:
@@ -49,7 +31,6 @@ def get_script():
 
 
 def initialize_selenium():
-    close_previous_sessions()
     options = Options()
     options.add_experimental_option("detach", True)
     options.add_argument("user-data-dir=C:\\Users\\Techron\\AppData\\Local\\Google\\Chrome\\User Data")
@@ -111,18 +92,18 @@ def create_folder(folder_name):
 
 def generate_image_prompts_from_script(script):
     print("Accessing Cohere API")
-    with open('API_KEY.txt',"r") as key:
-        API_KEY = key.read()
+    API_KEY = os.getenv('COHERE_API_KEY')
     co = cohere.Client(API_KEY)
 
     response = co.generate(
-        prompt= f"create {IMAGE_NUMBER} vivid descriptive image scenes from:{script}"
+        prompt= f"Generate {IMAGE_NUMBER} numbered different vivid and descriptive scenes inspired by the script provided. Ensure each scene captures the essence of the setting and maintains consistency among characters. Emphasize detailed surroundings and character interactions to bring the narrative to life. Aim to depict key moments and emotions portrayed in the script, highlighting dynamic visuals that evoke a strong sense of atmosphere and storytelling. Here is the provided SCRIPT: \n{script}"
     )
     return response
 
 
 def clean_api_response(response):
     response = str(response)
+    print(response)
     matches = re.findall(r'\s+(\d+\.\s.*?)\n', response, re.DOTALL)
 
     # Create an array to store the individual texts
@@ -130,7 +111,9 @@ def clean_api_response(response):
 
     # Iterate through matches and append to the array
     for match in matches:
+        match = re.sub(r"'", r"", match)
         texts_array.append(match.strip())
+        print(match.strip())
 
     # Print or use the array as needed
     print("Cleaned API Response")
@@ -167,6 +150,7 @@ def pass_image_prompts_to_ai(driver,promptsArr):
 
 
 def main():
+    print("\nRUNNING\n\n")
     try:
         script = get_script()
 
@@ -182,8 +166,9 @@ def main():
         print(arr)
         pass_image_prompts_to_ai(driver,arr)
 
-    except SessionNotCreatedException:
-        pass
+    except SessionNotCreatedException as e:
+        print(f"{e}")
+
 
 
 main()
