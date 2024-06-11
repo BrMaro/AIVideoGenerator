@@ -158,7 +158,6 @@ def main():
         response = generate_image_prompts_from_script(script)
 
         arr = clean_api_response(response)
-        print(arr)
         pass_image_prompts_to_ai(driver, arr)
 
     except SessionNotCreatedException as e:
