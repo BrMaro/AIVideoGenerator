@@ -10,16 +10,19 @@ from PIL import Image
 from gtts import gTTS
 import re
 from moviepy.config import change_settings
+import captacity
 
 load_dotenv()
 
+# Load Env variables
 PROJECT_PATH = os.getenv("PROJECT_PATH")
-IMAGE_FOLDER_PATH = os.getenv("IMAGE_FOLDER_PATH")
-SUBTITLE_FILE_PATH = os.getenv("SUBTITLE_FILE_PATH")
 IMAGE_FILE_TYPE = os.getenv('IMAGE_FILE_TYPE')
 FONT = os.getenv("FONT")
 IMAGEMAGICK_FILE_PATH = os.getenv("IMAGEMAGICK_FILE_PATH")
 change_settings({"IMAGEMAGICK_BINARY": IMAGEMAGICK_FILE_PATH})
+
+IMAGE_FOLDER_PATH = os.path.join(PROJECT_PATH, "Images")
+SUBTITLE_FILE_PATH = os.path.join(PROJECT_PATH, "subtitles.txt")
 
 HEIGHT = 1080
 ASPECT_RATIO = 9 / 16
@@ -32,61 +35,6 @@ def get_script():
     with open('script.txt', 'r', encoding='utf-8') as file:
         content = file.read().upper()
         return content
-
-
-def generate_subtitles_file(script, max_words_per_line=4):
-    words = re.findall(r'\b\w+\b', script)
-    subtitle_lines = []
-
-    current_line = []
-    current_line_word_count = 0
-
-    for word in words:
-        if current_line_word_count + 1 > max_words_per_line:
-            subtitle_lines.append(' '.join(current_line))
-            current_line = [word]
-            current_line_word_count = 1
-        else:
-            current_line.append(word)
-            current_line_word_count += 1
-
-    # Add the last line
-    subtitle_lines.append(' '.join(current_line))
-
-    # Generate the subtitle file content
-    with open(SUBTITLE_FILE_PATH, 'w') as file:
-        for i, line in enumerate(subtitle_lines):
-            start_time = i * DURATION_PER_IMAGE
-            end_time = (i + 1) * DURATION_PER_IMAGE
-            file.write(f'{start_time:.2f} {end_time:.2f} {line}\n')
-
-
-def load_subtitles(subtitle_file):
-    subtitles = []
-    with open(subtitle_file, "r") as file:
-        for line in file:
-            start = line.strip().split(' ')[0]
-            end = line.strip().split(' ')[1]
-            caption = " ".join(line.strip().split(' ')[2:])
-            subtitles.append((float(start), float(end), caption))
-
-    return subtitles
-
-
-def create_text_clips(subtitle_file, video_duration):
-    subtitles = load_subtitles(subtitle_file)
-    text_clips = []
-    for start, end, caption in subtitles:
-        text_clip = TextClip(caption, fontsize=60, color='yellow', size=(WIDTH, HEIGHT), method='caption',
-                             align='center', font=FONT, stroke_color='black', stroke_width=3,
-                             interline=-4, kerning=4)
-        text_clip = text_clip.set_start(start).set_duration(end - start).set_opacity(1.0)
-        text_clips.append(text_clip)
-
-    final_text_clip = CompositeVideoClip(text_clips).set_duration(video_duration)
-
-    print("Subtitle clip created")
-    return final_text_clip
 
 
 def get_image_files(folder):
@@ -137,12 +85,35 @@ def add_sound(script):
         print("Script file already exists")
 
 
+def add_subtitles(video_file, ):
+    captacity.add_captions(
+        print_info=True,
+
+        video_file=video_file,
+        output_file=f"Captioned_{video_file}",
+
+        font="C:\\Windows\\Fonts\\Arial.ttf",
+        font_size=80,
+        font_color="white",
+
+        stroke_width=1,
+        stroke_color="black",
+
+        shadow_strength=5.0,
+        shadow_blur=0.5,
+
+        highlight_current_word=True,
+        word_highlight_color="red",
+
+        line_count=1,
+    )
+
+
 def create_video(image_folder, output_path, fps=24):
     script = get_script()
     add_sound(script)
     audio_clip = AudioFileClip('script.mp3')
     audio_duration = audio_clip.duration
-    generate_subtitles_file(script)
     image_files = get_image_files(image_folder)
 
     num_images = len(image_files)
@@ -154,16 +125,15 @@ def create_video(image_folder, output_path, fps=24):
                       for image_file in tqdm(image_files, desc="Resizing images", unit="image")]
 
     for img_clip in resized_images:
-        img_clip = img_clip.fx(vfx.fadeout, 0.2).fx(vfx.fadein, 0.2)
+        img_clip = img_clip.fx(vfx.fadeout, 0.5).fx(vfx.fadein, 0.5)
 
     final_clip = concatenate_videoclips(resized_images, method='compose')
-    subtitle_clips = create_text_clips(SUBTITLE_FILE_PATH, audio_duration)
-    final_clip = CompositeVideoClip([final_clip, subtitle_clips])
     final_clip = final_clip.set_audio(audio_clip)
     final_clip.write_videofile(output_path, fps=fps, codec='libx264', audio_codec='aac')
+    add_subtitles('output_video.mp4')
 
-    if os.path.exists("script.mp3"):
-        os.remove("script.mp3")
+    # if os.path.exists("script.mp3"):
+    #     os.remove("script.mp3")
     if os.path.exists(SUBTITLE_FILE_PATH):
         os.remove(SUBTITLE_FILE_PATH)
 

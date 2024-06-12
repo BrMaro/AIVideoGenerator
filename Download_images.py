@@ -96,7 +96,7 @@ def generate_image_prompts_from_script(script):
     co = cohere.Client(API_KEY)
 
     response = co.generate(
-        prompt=f"Generate {IMAGE_NUMBER} numbered different vivid and descriptive visual scenes inspired by the script provided. Ensure each scene captures the essence of the setting,environment and mood. Emphasize detailed surroundings and character interactions to bring the narrative to life. Aim to depict key moments and emotions portrayed in the script, highlighting dynamic visuals that evoke a strong sense of atmosphere and storytelling. Make sure to use consistent naming and also describe clothing where necesary to maintain character consistency. Here is the provided SCRIPT: \n{script}"
+        prompt=f"Generate {IMAGE_NUMBER} numbered different vivid and descriptive visual scenes inspired by the script provided. Ensure each scene captures the essence of the setting,environment and mood. Emphasize detailed surroundings and character interactions to bring the narrative to life. Aim to depict key moments and emotions portrayed in the script, highlighting dynamic visuals that evoke a strong sense of atmosphere and storytelling for each. For each scene make sure to use consistent naming and also describe clothing where necesary to maintain character consistency.Try to be as verbose as you can in the descriptions for detail. Here is the provided SCRIPT: \n{script}"
     )
     return response
 
