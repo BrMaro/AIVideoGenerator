@@ -11,6 +11,8 @@ from gtts import gTTS
 import re
 from moviepy.config import change_settings
 import captacity
+from tiktokvoice import tts
+from pydub import AudioSegment
 
 load_dotenv()
 
@@ -77,12 +79,16 @@ def resize_image(img_file):
     return img_clip
 
 
-def add_sound(script):
-    if not os.path.exists("script.mp3"):
-        mysound = gTTS(text=script, lang=language)
-        mysound.save("script.mp3")
-    else:
-        print("Script file already exists")
+def add_voice(script):
+    voice = "en_us_009"
+    tts(script, voice, "script.mp3")
+
+
+
+def speed_up_audio(audio_path, speed_factor):
+    audio = AudioSegment.from_file(audio_path)
+    sped_up_audio = audio.speedup(playback_speed=speed_factor)
+    sped_up_audio.export("script_sped_up.mp3", format="mp3")
 
 
 def add_subtitles(video_file, ):
@@ -111,9 +117,14 @@ def add_subtitles(video_file, ):
 
 def create_video(image_folder, output_path, fps=24):
     script = get_script()
-    add_sound(script)
-    audio_clip = AudioFileClip('script.mp3')
+
+    add_voice(script)
+
+    speed_up_audio("script.mp3", 1.01)
+
+    audio_clip = AudioFileClip('script_sped_up.mp3')
     audio_duration = audio_clip.duration
+
     image_files = get_image_files(image_folder)
 
     num_images = len(image_files)
@@ -132,8 +143,9 @@ def create_video(image_folder, output_path, fps=24):
     final_clip.write_videofile(output_path, fps=fps, codec='libx264', audio_codec='aac')
     add_subtitles('output_video.mp4')
 
-    # if os.path.exists("script.mp3"):
-    #     os.remove("script.mp3")
+    if os.path.exists("script.mp3"):
+        os.remove("script.mp3")
+        os.remove("script_sped_up.mp3")
     if os.path.exists(SUBTITLE_FILE_PATH):
         os.remove(SUBTITLE_FILE_PATH)
 
