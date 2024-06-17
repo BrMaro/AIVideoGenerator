@@ -1,14 +1,9 @@
 from moviepy.editor import *
-from moviepy.video.fx.resize import resize
-from moviepy.video.fx.all import *
-import random
 import os
 from dotenv import load_dotenv
 from tqdm import tqdm
 import numpy as np
 from PIL import Image
-from gtts import gTTS
-import re
 from moviepy.config import change_settings
 import captacity
 from tiktokvoice import tts
@@ -26,16 +21,15 @@ change_settings({"IMAGEMAGICK_BINARY": IMAGEMAGICK_FILE_PATH})
 IMAGE_FOLDER_PATH = os.path.join(PROJECT_PATH, "Images")
 SUBTITLE_FILE_PATH = os.path.join(PROJECT_PATH, "subtitles.txt")
 
-HEIGHT = 1080
-ASPECT_RATIO = 9 / 16
-WIDTH = round(HEIGHT * ASPECT_RATIO)
+HEIGHT = 1920
+WIDTH = 1080
 DURATION_PER_IMAGE = 2
 language = 'en'
 
 
 def get_script():
     with open('script.txt', 'r', encoding='utf-8') as file:
-        content = file.read().upper()
+        content = file.read()
         return content
 
 
@@ -45,30 +39,48 @@ def get_image_files(folder):
     return image_files
 
 
-def resize_image_with_aspect_ratio(image_path, target_width, target_height):
-    original_image = Image.open(image_path)
+def crop_image_to_aspect_ratio(image_path, target_width, target_height):
+    try:
+        original_image = Image.open(image_path)
+    except Exception as e:
+        print(f"Error opening image {image_path}: {e}")
+        return None
 
-    # Get the original aspect ratio
+    # Get the original dimensions
     original_width, original_height = original_image.size
-    original_aspect_ratio = original_width / original_height
 
-    # Calculate the new dimensions while maintaining the aspect ratio
-    if original_aspect_ratio > target_width / target_height:
-        new_width = int(target_width)
-        new_height = int(target_width / original_aspect_ratio)
+    # Calculate the target aspect ratio
+    target_aspect_ratio = target_width / target_height
+
+    # Calculate the new dimensions to crop to
+    if original_width / original_height > target_aspect_ratio:
+        # Crop the width
+        new_width = int(original_height * target_aspect_ratio)
+        new_height = original_height
+        x_offset = (original_width - new_width) // 2
+        y_offset = 0
     else:
-        new_width = int(target_height * original_aspect_ratio)
-        new_height = int(target_height)
+        # Crop the height
+        new_width = original_width
+        new_height = int(original_width / target_aspect_ratio)
+        x_offset = 0
+        y_offset = (original_height - new_height) // 2
 
-    # Resize the image
-    resized_image = original_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+    # Crop the image
+    cropped_image = original_image.crop((x_offset, y_offset, x_offset + new_width, y_offset + new_height))
+
+    # Resize the image to the target size
+    resized_image = cropped_image.resize((target_width, target_height), Image.ANTIALIAS)
 
     return resized_image
 
 
-def resize_image(img_file):
+def crop_image(img_file):
     image_path = os.path.join(IMAGE_FOLDER_PATH, img_file)
-    img = resize_image_with_aspect_ratio(image_path, WIDTH, HEIGHT)
+    img = crop_image_to_aspect_ratio(image_path, WIDTH, HEIGHT)
+
+    if img is None:
+        return None
 
     # Convert PIL Image to NumPy array
     img_array = np.array(img)
@@ -78,11 +90,9 @@ def resize_image(img_file):
 
     return img_clip
 
-
 def add_voice(script):
-    voice = "en_us_009"
+    voice = "en_us_006"
     tts(script, voice, "script.mp3")
-
 
 
 def speed_up_audio(audio_path, speed_factor):
@@ -91,26 +101,24 @@ def speed_up_audio(audio_path, speed_factor):
     sped_up_audio.export("script_sped_up.mp3", format="mp3")
 
 
-def add_subtitles(video_file, ):
+def add_subtitles(video_file):
     captacity.add_captions(
         print_info=True,
 
         video_file=video_file,
         output_file=f"Captioned_{video_file}",
 
-        font="C:\\Windows\\Fonts\\Arial.ttf",
-        font_size=80,
+        font=FONT,
+        font_size=60,
         font_color="white",
 
         stroke_width=1,
         stroke_color="black",
-
         shadow_strength=5.0,
         shadow_blur=0.5,
 
         highlight_current_word=True,
         word_highlight_color="red",
-
         line_count=1,
     )
 
@@ -119,7 +127,6 @@ def create_video(image_folder, output_path, fps=24):
     script = get_script()
 
     add_voice(script)
-
     speed_up_audio("script.mp3", 1.01)
 
     audio_clip = AudioFileClip('script_sped_up.mp3')
@@ -132,16 +139,20 @@ def create_video(image_folder, output_path, fps=24):
 
     print(f"Expected video length: {audio_duration:.2f} seconds")
 
-    resized_images = [resize_image(image_file).set_duration(duration_per_image).set_position(("center", "center"))
-                      for image_file in tqdm(image_files, desc="Resizing images", unit="image")]
+    cropped_images = []
+    for image_file in tqdm(image_files, desc="Cropping images", unit="image"):
+        img_clip = crop_image(image_file)
+        if img_clip is not None:
+            img_clip = img_clip.set_duration(duration_per_image).set_position(("center", "center"))
+            cropped_images.append(img_clip)
 
-    for img_clip in resized_images:
-        img_clip = img_clip.fx(vfx.fadeout, 0.5).fx(vfx.fadein, 0.5)
+    if not cropped_images:
+        raise ValueError("No valid images to create video")
 
-    final_clip = concatenate_videoclips(resized_images, method='compose')
+    final_clip = concatenate_videoclips(cropped_images, method='compose')
     final_clip = final_clip.set_audio(audio_clip)
     final_clip.write_videofile(output_path, fps=fps, codec='libx264', audio_codec='aac')
-    add_subtitles('output_video.mp4')
+    add_subtitles(output_path)
 
     if os.path.exists("script.mp3"):
         os.remove("script.mp3")

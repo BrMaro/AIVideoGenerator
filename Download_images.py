@@ -16,7 +16,7 @@ import time
 
 load_dotenv()
 
-IMAGE_NUMBER = 60
+IMAGE_NUMBER = 20
 IMAGE_PER_PROMPT = 1
 PROJECT_PATH = os.getenv("PROJECT_PATH")
 IMAGE_FOLDER_PATH = os.path.join(PROJECT_PATH, "Images")
