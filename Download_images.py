@@ -20,8 +20,10 @@ IMAGE_NUMBER = 20
 IMAGE_PER_PROMPT = 1
 PROJECT_PATH = os.getenv("PROJECT_PATH")
 IMAGE_FOLDER_PATH = os.path.join(PROJECT_PATH, "Images")
-
 IMAGE_FILE_TYPE = os.getenv("IMAGE_FILE_TYPE")
+
+API_KEY = os.getenv('COHERE_API_KEY')
+
 timeoutTime = 60
 
 
@@ -92,7 +94,6 @@ def create_folder(folder_name):
 def generate_image_prompts_from_script(script):
     start_time = time.time()
     print("Accessing Cohere API")
-    API_KEY = os.getenv('COHERE_API_KEY')
     co = cohere.Client(API_KEY)
 
     response = co.generate(
@@ -178,7 +179,7 @@ def pass_image_prompts_to_ai(driver, promptsArr):
     driver.quit()
 
 
-def main():
+def download_images_main():
     start_time = time.time()
     print("\nLoading..................\n\n")
     try:

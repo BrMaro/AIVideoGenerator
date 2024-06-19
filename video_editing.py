@@ -8,6 +8,10 @@ from moviepy.config import change_settings
 import captacity
 from tiktokvoice import tts
 from pydub import AudioSegment
+from moviepy.video.fx.fadein import fadein
+from moviepy.video.fx.fadeout import fadeout
+import random
+from moviepy.decorators import add_mask_if_none, requires_duration
 
 load_dotenv()
 
@@ -18,6 +22,7 @@ FONT = os.getenv("FONT")
 IMAGEMAGICK_FILE_PATH = os.getenv("IMAGEMAGICK_FILE_PATH")
 change_settings({"IMAGEMAGICK_BINARY": IMAGEMAGICK_FILE_PATH})
 
+
 IMAGE_FOLDER_PATH = os.path.join(PROJECT_PATH, "Images")
 SUBTITLE_FILE_PATH = os.path.join(PROJECT_PATH, "subtitles.txt")
 
@@ -25,6 +30,49 @@ HEIGHT = 1920
 WIDTH = 1080
 DURATION_PER_IMAGE = 2
 language = 'en'
+
+
+# Define transitioins
+@requires_duration
+@add_mask_if_none
+def crossfadein(clip, duration):
+    clip.mask.duration = clip.duration
+    new_clip = clip.copy()
+    new_clip.mask = clip.mask.fx(fadein, duration)
+    return new_clip
+
+@requires_duration
+@add_mask_if_none
+def crossfadeout(clip, duration):
+    clip.mask.duration = clip.duration
+    new_clip = clip.copy()
+    new_clip.mask = clip.mask.fx(fadeout, duration)
+    return new_clip
+
+
+def slide_in(clip, duration, side):
+    w, h = clip.size
+    pos_dict = {
+        "left": lambda t: (min(0, w * (t / duration - 1)), "center"),
+        "right": lambda t: (max(0, w * (1 - t / duration)), "center"),
+        "top": lambda t: ("center", min(0, h * (t / duration - 1))),
+        "bottom": lambda t: ("center", max(0, h * (1 - t / duration))),
+    }
+
+    return clip.set_position(pos_dict[side])
+
+
+def slide_out(clip, duration, side):
+    w, h = clip.size
+    ts = clip.duration - duration  # start time of the effect.
+    pos_dict = {
+        "left": lambda t: (min(0, w * (-(t - ts) / duration)), "center"),
+        "right": lambda t: (max(0, w * ((t - ts) / duration)), "center"),
+        "top": lambda t: ("center", min(0, h * (-(t - ts) / duration))),
+        "bottom": lambda t: ("center", max(0, h * ((t - ts) / duration))),
+    }
+
+    return clip.set_position(pos_dict[side])
 
 
 def get_script():
@@ -90,6 +138,7 @@ def crop_image(img_file):
 
     return img_clip
 
+
 def add_voice(script):
     voice = "en_us_006"
     tts(script, voice, "script.mp3")
@@ -123,6 +172,18 @@ def add_subtitles(video_file):
     )
 
 
+def random_transition(clip, duration):
+    transitions = [crossfadein, crossfadeout, slide_in, slide_out]
+    transition = random.choice(transitions)
+
+    if transition in [slide_in, slide_out]:
+        sides = ['top', 'bottom', 'left', 'right']
+        side = random.choice(sides)
+        return transition(clip, duration, side)
+    else:
+        return transition(clip, duration)
+
+
 def create_video(image_folder, output_path, fps=24):
     script = get_script()
 
@@ -144,6 +205,7 @@ def create_video(image_folder, output_path, fps=24):
         img_clip = crop_image(image_file)
         if img_clip is not None:
             img_clip = img_clip.set_duration(duration_per_image).set_position(("center", "center"))
+            img_clip = random_transition(img_clip, duration_per_image)
             cropped_images.append(img_clip)
 
     if not cropped_images:
@@ -157,6 +219,8 @@ def create_video(image_folder, output_path, fps=24):
     if os.path.exists("script.mp3"):
         os.remove("script.mp3")
         os.remove("script_sped_up.mp3")
+        os.remove("output_video.mp4")
+
     if os.path.exists(SUBTITLE_FILE_PATH):
         os.remove(SUBTITLE_FILE_PATH)
 
