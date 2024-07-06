@@ -144,6 +144,26 @@ def crop_image(img_file):
     return img_clip
 
 
+def crop_video_to_aspect_ratio(video_clip, target_width, target_height):
+    original_width, original_height = video_clip.size
+    target_aspect_ratio = target_width / target_height
+
+    # Calculate the new dimensions to crop to
+    if original_width / original_height > target_aspect_ratio:
+        # Crop the width
+        new_width = int(original_height * target_aspect_ratio)
+        x_offset = (original_width - new_width) // 2
+        y_offset = 0
+        crop_clip = video_clip.crop(x1=x_offset, y1=y_offset, x2=x_offset + new_width, y2=original_height)
+    else:
+        # Crop the height
+        new_height = int(original_width / target_aspect_ratio)
+        x_offset = 0
+        y_offset = (original_height - new_height) // 2
+        crop_clip = video_clip.crop(x1=x_offset, y1=y_offset, x2=original_width, y2=y_offset + new_height)
+
+    return crop_clip.resize((target_width, target_height))
+
 
 def add_voice(script):
     voice = "en_us_006"
