@@ -12,16 +12,20 @@ from moviepy.video.fx.fadein import fadein
 from moviepy.video.fx.fadeout import fadeout
 import random
 from moviepy.decorators import add_mask_if_none, requires_duration
+import cohere
+import time
+import re
 
 load_dotenv()
 
 # Load Env variables
-PROJECT_PATH = os.getenv("PROJECT_PATH")
+PROJECT_PATH = os.path.dirname(os.path.realpath(__file__))
 IMAGE_FILE_TYPE = os.getenv('IMAGE_FILE_TYPE')
 FONT = os.getenv("FONT")
 IMAGEMAGICK_FILE_PATH = os.getenv("IMAGEMAGICK_FILE_PATH")
 change_settings({"IMAGEMAGICK_BINARY": IMAGEMAGICK_FILE_PATH})
 
+API_KEY = os.getenv('COHERE_API_KEY')
 
 IMAGE_FOLDER_PATH = os.path.join(PROJECT_PATH, "Images")
 SUBTITLE_FILE_PATH = os.path.join(PROJECT_PATH, "subtitles.txt")
@@ -40,6 +44,7 @@ def crossfadein(clip, duration):
     new_clip = clip.copy()
     new_clip.mask = clip.mask.fx(fadein, duration)
     return new_clip
+
 
 @requires_duration
 @add_mask_if_none
@@ -139,6 +144,7 @@ def crop_image(img_file):
     return img_clip
 
 
+
 def add_voice(script):
     voice = "en_us_006"
     tts(script, voice, "script.mp3")
@@ -148,6 +154,25 @@ def speed_up_audio(audio_path, speed_factor):
     audio = AudioSegment.from_file(audio_path)
     sped_up_audio = audio.speedup(playback_speed=speed_factor)
     sped_up_audio.export("script_sped_up.mp3", format="mp3")
+
+
+def get_moods_from_script(script):
+    start_time = time.time()
+    print("Accessing Cohere API")
+    co = cohere.Client(API_KEY)
+
+    response = co.generate(
+        prompt=f"""Outline 3 numbered,distinct moods that the following script tries to embody.P.S. just name the moods nothing ele. 
+        Choose from the following: Sadness, Happiness, Loneliness, Hopefulness, Fear, Joy,Amusement, Eroticism, Beauty, Relaxation, Triumph, Defiance, Pumped up,
+        Here is the script:\n{script}"""
+    )
+    print(f"Moods in the script analyzed in {time.time() - start_time:.2f} seconds")
+
+    text_response = response[0].text
+    pattern = r"\d+\.\s+(\w+)"
+    matches = re.findall(pattern, text_response)
+    moods = list(matches)
+    print(moods)
 
 
 def add_subtitles(video_file):
@@ -184,7 +209,14 @@ def random_transition(clip, duration):
         return transition(clip, duration)
 
 
-def create_video(image_folder, output_path, fps=24):
+def get_media_files(folder):
+    image_files = [f for f in os.listdir(folder) if f.lower().endswith(IMAGE_FILE_TYPE)]
+    video_files = [f for f in os.listdir(folder) if f.lower().endswith(('mp4', 'mov', 'avi'))]
+    print("Media files collected")
+    return image_files, video_files
+
+
+def create_video(media_folder, output_path, fps=24):
     script = get_script()
 
     add_voice(script)
@@ -193,28 +225,39 @@ def create_video(image_folder, output_path, fps=24):
     audio_clip = AudioFileClip('script_sped_up.mp3')
     audio_duration = audio_clip.duration
 
-    image_files = get_image_files(image_folder)
+    image_files, video_files = get_media_files(media_folder)
 
-    num_images = len(image_files)
-    duration_per_image = audio_duration / num_images
+    if not image_files and not video_files:
+        raise ValueError("No media files to create video")
 
-    print(f"Expected video length: {audio_duration:.2f} seconds")
+    if video_files:
+        for video_file in video_files:
+            video_clip = VideoFileClip(os.path.join(media_folder, video_file))
+            if video_clip.duration > 60:
+                video_clip = video_clip.subclip(0, audio_duration)
+                if video_clip.size[0] / video_clip.size[1] != WIDTH / HEIGHT:
+                    video_clip = crop_video_to_aspect_ratio(video_clip, WIDTH, HEIGHT)
+                final_clip = video_clip.set_audio(audio_clip)
+                final_clip.write_videofile(output_path, fps=fps, codec='libx264', audio_codec='aac')
+                add_subtitles(output_path)
+                break
+        else:
+            cropped_images = []
+            for image_file in tqdm(image_files, desc="Cropping images", unit="image"):
+                img_clip = crop_image(image_file)
+                if img_clip is not None:
+                    img_clip = img_clip.set_duration(audio_duration / len(image_files)).set_position(
+                        ("center", "center"))
+                    img_clip = random_transition(img_clip, audio_duration / len(image_files))
+                    cropped_images.append(img_clip)
 
-    cropped_images = []
-    for image_file in tqdm(image_files, desc="Cropping images", unit="image"):
-        img_clip = crop_image(image_file)
-        if img_clip is not None:
-            img_clip = img_clip.set_duration(duration_per_image).set_position(("center", "center"))
-            img_clip = random_transition(img_clip, duration_per_image)
-            cropped_images.append(img_clip)
+            if not cropped_images:
+                raise ValueError("No valid images to create video")
 
-    if not cropped_images:
-        raise ValueError("No valid images to create video")
-
-    final_clip = concatenate_videoclips(cropped_images, method='compose')
-    final_clip = final_clip.set_audio(audio_clip)
-    final_clip.write_videofile(output_path, fps=fps, codec='libx264', audio_codec='aac')
-    add_subtitles(output_path)
+            final_clip = concatenate_videoclips(cropped_images, method='compose')
+            final_clip = final_clip.set_audio(audio_clip)
+            final_clip.write_videofile(output_path, fps=fps, codec='libx264', audio_codec='aac')
+            add_subtitles(output_path)
 
     if os.path.exists("script.mp3"):
         os.remove("script.mp3")

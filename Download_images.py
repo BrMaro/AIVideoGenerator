@@ -18,7 +18,9 @@ load_dotenv()
 
 IMAGE_NUMBER = 20
 IMAGE_PER_PROMPT = 1
-PROJECT_PATH = os.getenv("PROJECT_PATH")
+
+PROJECT_PATH = os.path.dirname(os.path.realpath(__file__))
+
 IMAGE_FOLDER_PATH = os.path.join(PROJECT_PATH, "Images")
 IMAGE_FILE_TYPE = os.getenv("IMAGE_FILE_TYPE")
 
@@ -191,16 +193,17 @@ def download_images_main():
 
         arr = clean_api_response(response)
 
+        print(arr)
         driver = initialize_selenium()
 
         driver.implicitly_wait(20)
 
         pass_image_prompts_to_ai(driver, arr)
 
+        print(f"Script completed in {time.time() - start_time:.2f} seconds")
+
     except SessionNotCreatedException as e:
         print(f"{e}")
 
-    print(f"Script completed in {time.time() - start_time:.2f} seconds")
 
-
-main()
+download_images_main()
