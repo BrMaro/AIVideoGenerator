@@ -36,50 +36,6 @@ DURATION_PER_IMAGE = 2
 language = 'en'
 
 
-# Define transitioins
-@requires_duration
-@add_mask_if_none
-def crossfadein(clip, duration):
-    clip.mask.duration = clip.duration
-    new_clip = clip.copy()
-    new_clip.mask = clip.mask.fx(fadein, duration)
-    return new_clip
-
-
-@requires_duration
-@add_mask_if_none
-def crossfadeout(clip, duration):
-    clip.mask.duration = clip.duration
-    new_clip = clip.copy()
-    new_clip.mask = clip.mask.fx(fadeout, duration)
-    return new_clip
-
-
-def slide_in(clip, duration, side):
-    w, h = clip.size
-    pos_dict = {
-        "left": lambda t: (min(0, w * (t / duration - 1)), "center"),
-        "right": lambda t: (max(0, w * (1 - t / duration)), "center"),
-        "top": lambda t: ("center", min(0, h * (t / duration - 1))),
-        "bottom": lambda t: ("center", max(0, h * (1 - t / duration))),
-    }
-
-    return clip.set_position(pos_dict[side])
-
-
-def slide_out(clip, duration, side):
-    w, h = clip.size
-    ts = clip.duration - duration  # start time of the effect.
-    pos_dict = {
-        "left": lambda t: (min(0, w * (-(t - ts) / duration)), "center"),
-        "right": lambda t: (max(0, w * ((t - ts) / duration)), "center"),
-        "top": lambda t: ("center", min(0, h * (-(t - ts) / duration))),
-        "bottom": lambda t: ("center", max(0, h * ((t - ts) / duration))),
-    }
-
-    return clip.set_position(pos_dict[side])
-
-
 def get_script():
     with open('script.txt', 'r', encoding='utf-8') as file:
         content = file.read()
@@ -205,7 +161,7 @@ def add_subtitles(video_file):
         font_size=80,
         font_color="white",
 
-        stroke_width=15,
+        stroke_width=10,
         stroke_color="black",
         shadow_strength=5.0,
         shadow_blur=0.5,
@@ -214,18 +170,6 @@ def add_subtitles(video_file):
         word_highlight_color="red",
         line_count=1,
     )
-
-
-def random_transition(clip, duration):
-    transitions = [crossfadein, crossfadeout, slide_in, slide_out]
-    transition = random.choice(transitions)
-
-    if transition in [slide_in, slide_out]:
-        sides = ['top', 'bottom', 'left', 'right']
-        side = random.choice(sides)
-        return transition(clip, duration, side)
-    else:
-        return transition(clip, duration)
 
 
 def get_media_files(folder):
@@ -270,7 +214,6 @@ def create_video(media_folder, output_path, fps=24):
             if img_clip is not None:
                 img_clip = img_clip.set_duration(audio_duration / len(image_files)).set_position(
                     ("center", "center"))
-                img_clip = random_transition(img_clip, audio_duration / len(image_files))
                 cropped_images.append(img_clip)
 
         if not cropped_images:
