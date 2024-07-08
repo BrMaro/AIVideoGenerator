@@ -148,15 +148,14 @@ def crop_video_to_aspect_ratio(video_clip, target_width, target_height):
     original_width, original_height = video_clip.size
     target_aspect_ratio = target_width / target_height
 
-    # Calculate the new dimensions to crop to
     if original_width / original_height > target_aspect_ratio:
-        # Crop the width
+        # Crop  width
         new_width = int(original_height * target_aspect_ratio)
         x_offset = (original_width - new_width) // 2
         y_offset = 0
         crop_clip = video_clip.crop(x1=x_offset, y1=y_offset, x2=x_offset + new_width, y2=original_height)
     else:
-        # Crop the height
+        # Crop height
         new_height = int(original_width / target_aspect_ratio)
         x_offset = 0
         y_offset = (original_height - new_height) // 2
@@ -202,11 +201,11 @@ def add_subtitles(video_file):
         video_file=video_file,
         output_file=f"Captioned_{video_file}",
 
-        font=FONT,
-        font_size=60,
+        font="Montserrat Extra Bold.otf",
+        font_size=80,
         font_color="white",
 
-        stroke_width=1,
+        stroke_width=15,
         stroke_color="black",
         shadow_strength=5.0,
         shadow_blur=0.5,
@@ -231,7 +230,7 @@ def random_transition(clip, duration):
 
 def get_media_files(folder):
     image_files = [f for f in os.listdir(folder) if f.lower().endswith(IMAGE_FILE_TYPE)]
-    video_files = [f for f in os.listdir(folder) if f.lower().endswith(('mp4', 'mov', 'avi'))]
+    video_files = [f for f in os.listdir(folder) if f.lower().endswith(('mp4', 'mov', 'avi','webm'))]
     print("Media files collected")
     return image_files, video_files
 
@@ -248,9 +247,11 @@ def create_video(media_folder, output_path, fps=24):
     image_files, video_files = get_media_files(media_folder)
 
     if not image_files and not video_files:
-        raise ValueError("No media files to create video")
+        print("NO media files to create video")
+        return
 
     if video_files:
+        print("Using video file(s)...")
         for video_file in video_files:
             video_clip = VideoFileClip(os.path.join(media_folder, video_file))
             if video_clip.duration > 60:
@@ -261,23 +262,25 @@ def create_video(media_folder, output_path, fps=24):
                 final_clip.write_videofile(output_path, fps=fps, codec='libx264', audio_codec='aac')
                 add_subtitles(output_path)
                 break
-        else:
-            cropped_images = []
-            for image_file in tqdm(image_files, desc="Cropping images", unit="image"):
-                img_clip = crop_image(image_file)
-                if img_clip is not None:
-                    img_clip = img_clip.set_duration(audio_duration / len(image_files)).set_position(
-                        ("center", "center"))
-                    img_clip = random_transition(img_clip, audio_duration / len(image_files))
-                    cropped_images.append(img_clip)
+    else:
+        print("Using image files...")
+        cropped_images = []
+        for image_file in tqdm(image_files, desc="Cropping images", unit="image"):
+            img_clip = crop_image(image_file)
+            if img_clip is not None:
+                img_clip = img_clip.set_duration(audio_duration / len(image_files)).set_position(
+                    ("center", "center"))
+                img_clip = random_transition(img_clip, audio_duration / len(image_files))
+                cropped_images.append(img_clip)
 
-            if not cropped_images:
-                raise ValueError("No valid images to create video")
+        if not cropped_images:
+            print("No valid images to create video")
+            return
 
-            final_clip = concatenate_videoclips(cropped_images, method='compose')
-            final_clip = final_clip.set_audio(audio_clip)
-            final_clip.write_videofile(output_path, fps=fps, codec='libx264', audio_codec='aac')
-            add_subtitles(output_path)
+        final_clip = concatenate_videoclips(cropped_images, method='compose')
+        final_clip = final_clip.set_audio(audio_clip)
+        final_clip.write_videofile(output_path, fps=fps, codec='libx264', audio_codec='aac')
+        add_subtitles(output_path)
 
     if os.path.exists("script.mp3"):
         os.remove("script.mp3")

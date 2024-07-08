@@ -159,8 +159,8 @@ def pass_image_prompts_to_ai(driver, promptsArr):
     driver.find_element(By.XPATH, "//p[text()='Image Generation']").click()  # image generation tab
     driver.find_element(By.XPATH, "//textarea[@class='chakra-textarea css-jj5ykg']").click()  # i
 
-    # Wait for the user to press Enter
-    input("Press Enter to continue...")
+    # # Wait for the user to press Enter
+    # input("Press Enter to continue...")
 
     for prompt in promptsArr:
         user_input = driver.find_element(By.XPATH, "//textarea[@class='chakra-textarea css-jj5ykg']")
